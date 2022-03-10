@@ -53,51 +53,62 @@ public static class ExternalAssetsUpdater
     {
         foreach (var externalAsset in ExternalAssetsManagerSettings.ExternalAssets)
         {
-            bool sourceFileExists = System.IO.File.Exists(externalAsset.ExternalFilePath);
-            if (sourceFileExists)
+            if (externalAsset.AutoUpdate)
             {
-                string absolutePath = AssetsUtility.AssetsRelativeToAbsolutePath(externalAsset.AssetPath);
-                bool assetExists = System.IO.File.Exists(absolutePath);
-                if (assetExists)
+                externalAsset.RefreshFileInfos();
+                if (externalAsset.SourceFileInfo.Exists)
                 {
-                    System.IO.FileInfo sourceFileInfo = new System.IO.FileInfo(externalAsset.ExternalFilePath);
-                    System.IO.FileInfo assetFileInfo = new System.IO.FileInfo(absolutePath);
-                    if (sourceFileInfo.LastWriteTime > assetFileInfo.LastWriteTime)
+                    if (externalAsset.AssetFileInfo.Exists)
                     {
-                        if (EditorUtility.DisplayDialog("External asset modified", $"External asset version is newer than asset at path: {externalAsset.AssetPath}\nShould asset be updated?", "Yes", "No"))
+                        if (!externalAsset.IsAssetUpToDate(refresh: false))
+                        {
+                            if (EditorUtility.DisplayDialog("External asset modified", $"External asset version is newer than asset at path: {externalAsset.AssetPath}\nShould asset be updated? If you refuse, automatic update will be disabled.", "Yes", "No"))
+                            {
+                                try
+                                {
+                                    externalAsset.AssetFileInfo.Delete();
+                                    externalAsset.SourceFileInfo.CopyTo(externalAsset.AssetFileInfo.FullName);
+                                    AssetDatabase.Refresh();
+                                }
+                                catch (System.Exception e)
+                                {
+                                    Debug.LogError($"Error during external asset update.\n{e}");
+                                }
+                            }
+                            else
+                            {
+                                externalAsset.AutoUpdate = false;
+                                EditorUtility.SetDirty(ExternalAssetsManagerSettings);
+                                AssetDatabase.SaveAssetIfDirty(ExternalAssetsManagerSettings);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (EditorUtility.DisplayDialog("External asset modified", $"External asset version is newer than asset at path: {externalAsset.AssetPath}\nShould asset be updated? If you refuse, automatic update will be disabled.", "Yes", "No"))
                         {
                             try
                             {
-                                System.IO.File.Delete(absolutePath);
-                                System.IO.File.Copy(externalAsset.ExternalFilePath, absolutePath);
-                                AssetDatabase.Refresh();
+                                externalAsset.SourceFileInfo.CopyTo(externalAsset.AssetFileInfo.FullName);
                             }
                             catch (System.Exception e)
                             {
                                 Debug.LogError($"Error during external asset update.\n{e}");
                             }
                         }
+                        else
+                        {
+                            externalAsset.AutoUpdate = false;
+                            EditorUtility.SetDirty(ExternalAssetsManagerSettings);
+                            AssetDatabase.SaveAssetIfDirty(ExternalAssetsManagerSettings);
+                        }
+                        AssetDatabase.Refresh();
                     }
                 }
                 else
                 {
-                    if (EditorUtility.DisplayDialog("External asset modified", $"External asset version is newer than asset at path: {externalAsset.AssetPath}\nShould asset be updated?", "Yes", "No"))
-                    {
-                        try
-                        {
-                            System.IO.File.Copy(externalAsset.ExternalFilePath, absolutePath);
-                        }
-                        catch (System.Exception e)
-                        {
-                            Debug.LogError($"Error during external asset update.\n{e}");
-                        }
-                    }
-                    AssetDatabase.Refresh();
+                    Debug.LogError($"Source file at {externalAsset.SourceFileInfo.FullName} doesn't exist.");
                 }
-            }
-            else
-            {
-                Debug.LogError($"Source file at {sourceFileExists} doesn't exist.");
             }
         }
     }

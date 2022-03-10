@@ -38,10 +38,10 @@ public class ExternalAssetsManagerWindow : EditorWindow
         }
         else
         {
-            EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Toggle(currentTab == Tab.NewEntry, new GUIContent("New entry"), GUI.skin.button)) currentTab = Tab.NewEntry;
-            if (GUILayout.Toggle(currentTab == Tab.Browse, new GUIContent("Browse"), GUI.skin.button)) currentTab = Tab.Browse;
-            if (GUILayout.Toggle(currentTab == Tab.About, new GUIContent("About"), GUI.skin.button)) currentTab = Tab.About;
+            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+            if (GUILayout.Toggle(currentTab == Tab.NewEntry, new GUIContent("New"), EditorStyles.toolbarButton)) currentTab = Tab.NewEntry;
+            if (GUILayout.Toggle(currentTab == Tab.Browse, new GUIContent("Browse"), EditorStyles.toolbarButton)) currentTab = Tab.Browse;
+            if (GUILayout.Toggle(currentTab == Tab.About, new GUIContent("About"), EditorStyles.toolbarButton)) currentTab = Tab.About;
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space();
@@ -67,7 +67,7 @@ public class ExternalAssetsManagerWindow : EditorWindow
                         if (GUILayout.Button(new GUIContent("SET DESTINATION ASSET"), GUILayout.MaxWidth(200.0f)))
                         {
                             newExternalAssetTargetPath = EditorUtility.SaveFilePanel("Choose external asset target", Application.dataPath, System.IO.Path.GetFileName(newExternalAssetPath), "*");
-                            newExternalAssetTargetPath = AssetsUtility.AbsolutePathToAssetsRelative(newExternalAssetTargetPath);
+                            newExternalAssetTargetPath = AssetsUtility.AbsolutePathToAssetsPath(newExternalAssetTargetPath);
                         }
                         EditorGUI.BeginDisabledGroup(true);
                         EditorGUILayout.TextField(newExternalAssetTargetPath);
@@ -82,7 +82,7 @@ public class ExternalAssetsManagerWindow : EditorWindow
                             {
                                 ExternalAssetsUpdater.ExternalAssetsManagerSettings.RegisterExternalAsset(newExternalAssetPath, newExternalAssetTargetPath);
                                 EditorUtility.SetDirty(ExternalAssetsUpdater.ExternalAssetsManagerSettings);
-                                AssetDatabase.SaveAssets();
+                                AssetDatabase.SaveAssetIfDirty(ExternalAssetsUpdater.ExternalAssetsManagerSettings);
                                 newExternalAssetPath = null;
                                 newExternalAssetTargetPath = null;
                             }
@@ -101,14 +101,27 @@ public class ExternalAssetsManagerWindow : EditorWindow
                             ExternalAsset toRemove = null;
                             foreach (ExternalAsset externalAsset in ExternalAssetsUpdater.ExternalAssetsManagerSettings.ExternalAssets)
                             {
+                                externalAsset.RefreshFileInfos();
                                 EditorGUILayout.BeginHorizontal();
                                 bool sourceFileExists = System.IO.File.Exists(externalAsset.ExternalFilePath);
                                 if (sourceFileExists)
                                 {
-                                    EditorGUILayout.SelectableLabel(externalAsset.ExternalFilePath);
                                     EditorGUI.BeginDisabledGroup(true);
+                                    EditorGUILayout.BeginVertical();
+                                    EditorGUILayout.BeginHorizontal();
                                     EditorGUILayout.ObjectField(AssetDatabase.LoadAssetAtPath(externalAsset.AssetPath, typeof(Object)), typeof(Object), allowSceneObjects: false);
+                                    EditorGUILayout.TextField(externalAsset.ExternalFilePath);
+                                    EditorGUILayout.EndHorizontal();
+                                    EditorGUILayout.BeginHorizontal();
+                                    Color defaultGUIColor = GUI.color;
+                                    GUI.color = externalAsset.IsAssetUpToDate() ? Color.green : Color.red;
+                                    EditorGUILayout.TextField(externalAsset.AssetFileInfo.LastWriteTime.ToString());
+                                    EditorGUILayout.TextField(externalAsset.SourceFileInfo.LastWriteTime.ToString());
+                                    GUI.color = defaultGUIColor;
+                                    EditorGUILayout.EndHorizontal();
+                                    EditorGUILayout.EndVertical();
                                     EditorGUI.EndDisabledGroup();
+
                                     if (GUILayout.Button(new GUIContent("REMOVE")))
                                     {
                                         toRemove = externalAsset;
@@ -117,7 +130,7 @@ public class ExternalAssetsManagerWindow : EditorWindow
                                     {
                                         if (sourceFileExists)
                                         {
-                                            string absolutePath = AssetsUtility.AssetsRelativeToAbsolutePath(externalAsset.AssetPath);
+                                            string absolutePath = AssetsUtility.AssetsPathToAbsolutePath(externalAsset.AssetPath);
                                             try
                                             {
                                                 if (System.IO.File.Exists(absolutePath))
@@ -154,7 +167,7 @@ public class ExternalAssetsManagerWindow : EditorWindow
                             {
                                 ExternalAssetsUpdater.ExternalAssetsManagerSettings.UnregisterExternalAsset(toRemove);
                                 EditorUtility.SetDirty(ExternalAssetsUpdater.ExternalAssetsManagerSettings);
-                                AssetDatabase.SaveAssets();
+                                AssetDatabase.SaveAssetIfDirty(ExternalAssetsUpdater.ExternalAssetsManagerSettings);
                             }
                         }
                         else

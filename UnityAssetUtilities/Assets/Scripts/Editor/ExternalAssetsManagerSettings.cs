@@ -12,6 +12,13 @@ public class ExternalAssetsManagerSettings : ScriptableObject
     public int ExternalAssetsCount => externalAssets.Count;
     public IEnumerable<ExternalAsset> ExternalAssets => externalAssets;
 
+    private void OnEnable()
+    {
+        foreach (var externalAsset in externalAssets)
+        {
+            externalAsset.RegenerateAbsoluteFilePaths();
+        }
+    }
 
     public bool ContainsAsset(string assetPath)
     {
@@ -39,16 +46,53 @@ public class ExternalAssetsManagerSettings : ScriptableObject
 public class ExternalAsset
 {
     [SerializeField]
+    private bool _autoUpdate;
+    public bool AutoUpdate { get => _autoUpdate; set => _autoUpdate = value; }
+
+    [SerializeField]
     private string _externalFilePath;
-    public string ExternalFilePath => _externalFilePath;
+    private string _externalFileAbsolutePath;
+    public string ExternalFilePath => _externalFileAbsolutePath;
+
     [SerializeField]
     private string _assetPath;
+    private string _assetAbsolutePath;
     public string AssetPath => _assetPath;
+
+    public System.IO.FileInfo SourceFileInfo { get; private set; }
+    public System.IO.FileInfo AssetFileInfo { get; private set; }
+
 
     public ExternalAsset(string externalFilePath, string assetPath)
     {
-        this._externalFilePath = externalFilePath;
-        this._assetPath = assetPath;
+        _autoUpdate = true;
+        _externalFileAbsolutePath = externalFilePath;
+        _assetPath = assetPath;
+        _externalFilePath = AssetsUtility.AbsolutePathToRelative(Application.dataPath, _externalFileAbsolutePath);
+        _assetAbsolutePath = AssetsUtility.AssetsPathToAbsolutePath(_assetPath);
+    }
+
+
+    public void RegenerateAbsoluteFilePaths()
+    {
+        _externalFileAbsolutePath = AssetsUtility.RelativePathToAbsolute(Application.dataPath, _externalFilePath);
+        _assetAbsolutePath = AssetsUtility.AssetsPathToAbsolutePath(_assetPath);
+    }
+
+    public bool IsAssetUpToDate(bool refresh = true)
+    {
+        if (refresh) RefreshFileInfos();
+        return SourceFileInfo.LastWriteTime <= AssetFileInfo.LastWriteTime;
+    }
+
+    public void RefreshFileInfos()
+    {
+        if (string.IsNullOrEmpty(_externalFileAbsolutePath) || string.IsNullOrEmpty(_assetAbsolutePath)) RegenerateAbsoluteFilePaths();
+
+        if (SourceFileInfo == null) SourceFileInfo = new System.IO.FileInfo(_externalFileAbsolutePath);
+        else SourceFileInfo.Refresh();
+        if (AssetFileInfo == null) AssetFileInfo = new System.IO.FileInfo(_assetAbsolutePath);
+        else AssetFileInfo.Refresh();
     }
 }
 
