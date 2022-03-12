@@ -12,4 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 17892070260edc247a7eec13eb952ec2, type: 3}
   m_Name: ExternalAssetsManagerSettings
   m_EditorClassIdentifier: 
+  autoSynchronization: 1
   externalAssets: []

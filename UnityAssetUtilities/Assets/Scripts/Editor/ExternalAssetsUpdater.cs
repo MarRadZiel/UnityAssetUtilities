@@ -21,7 +21,10 @@ public static class ExternalAssetsUpdater
         {
             LoadExternalAssetsManagerSettings();
         }
-        CheckForAssetModifications();
+        if (_externalAssetsManagerSettings.autoSynchronization)
+        {
+            CheckForAssetModifications();
+        }
     }
 
     private static void LoadExternalAssetsManagerSettings()

@@ -20,7 +20,7 @@ public static class AssetsUtility
         basePath = basePath.Replace('\\', '/').Trim();
         filePath = filePath.Replace('\\', '/').Trim();
         string relativePath = ".";
-        if (filePath.Contains(basePath)) return filePath.Replace(basePath, relativePath);
+        if (filePath.Contains(basePath)) return filePath.Replace(basePath.TrimEnd('/'), relativePath);
         relativePath += "/..";
         string lastRelativePath;
         do
@@ -33,7 +33,7 @@ public static class AssetsUtility
             }
             else
             {
-                return filePath.Replace(basePath, relativePath);
+                return filePath.Replace(basePath.TrimEnd('/'), relativePath);
             }
         }
         while (!lastRelativePath.Equals(relativePath));

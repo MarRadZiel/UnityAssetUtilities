@@ -7,6 +7,10 @@ public class ExternalAssetsManagerSettings : ScriptableObject
 {
     [SerializeField]
     [HideInInspector]
+    public bool autoSynchronization = true;
+
+    [SerializeField]
+    [HideInInspector]
     private List<ExternalAsset> externalAssets = new List<ExternalAsset>();
 
     public int ExternalAssetsCount => externalAssets.Count;
