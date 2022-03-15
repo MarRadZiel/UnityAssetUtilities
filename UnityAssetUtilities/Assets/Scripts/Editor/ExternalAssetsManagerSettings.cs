@@ -11,6 +11,10 @@ public class ExternalAssetsManagerSettings : ScriptableObject
 
     [SerializeField]
     [HideInInspector]
+    public bool notifyBeforeUpdate = true;
+
+    [SerializeField]
+    [HideInInspector]
     private List<ExternalAsset> externalAssets = new List<ExternalAsset>();
 
     public int ExternalAssetsCount => externalAssets.Count;
@@ -54,6 +58,10 @@ public class ExternalAsset
     public bool AutoUpdate { get => _autoUpdate; set => _autoUpdate = value; }
 
     [SerializeField]
+    private bool _notifyBeforeUpdate;
+    public bool NotifyBeforeUpdate { get => _notifyBeforeUpdate; set => _notifyBeforeUpdate = value; }
+
+    [SerializeField]
     private string _externalFilePath;
     private string _externalFileAbsolutePath;
     public string ExternalFilePath => _externalFileAbsolutePath;
@@ -70,6 +78,7 @@ public class ExternalAsset
     public ExternalAsset(string externalFilePath, string assetPath)
     {
         _autoUpdate = true;
+        _notifyBeforeUpdate = true;
         _externalFileAbsolutePath = externalFilePath;
         _assetPath = assetPath;
         _externalFilePath = AssetsUtility.AbsolutePathToRelative(Application.dataPath, _externalFileAbsolutePath);

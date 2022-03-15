@@ -13,4 +13,5 @@ MonoBehaviour:
   m_Name: ExternalAssetsManagerSettings
   m_EditorClassIdentifier: 
   autoSynchronization: 1
+  notifyBeforeUpdate: 1
   externalAssets: []

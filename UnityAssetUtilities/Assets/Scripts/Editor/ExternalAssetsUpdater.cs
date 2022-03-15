@@ -65,7 +65,7 @@ public static class ExternalAssetsUpdater
                     {
                         if (!externalAsset.IsAssetUpToDate(refresh: false))
                         {
-                            if (EditorUtility.DisplayDialog("External asset modified", $"External asset version is newer than asset at path: {externalAsset.AssetPath}\nShould asset be updated? If you refuse, automatic update will be disabled.", "Yes", "No"))
+                            if (!ExternalAssetsManagerSettings.notifyBeforeUpdate || !externalAsset.NotifyBeforeUpdate || EditorUtility.DisplayDialog("External asset modified", $"External asset version is newer than asset at path: {externalAsset.AssetPath}\nShould asset be updated? If you refuse, automatic update will be disabled.", "Yes", "No"))
                             {
                                 try
                                 {
@@ -88,7 +88,7 @@ public static class ExternalAssetsUpdater
                     }
                     else
                     {
-                        if (EditorUtility.DisplayDialog("External asset modified", $"External asset version is newer than asset at path: {externalAsset.AssetPath}\nShould asset be updated? If you refuse, automatic update will be disabled.", "Yes", "No"))
+                        if (!ExternalAssetsManagerSettings.notifyBeforeUpdate || !externalAsset.NotifyBeforeUpdate || EditorUtility.DisplayDialog("External asset modified", $"There is no corresponding asset yet.\nShould it be created now? If you refuse, automatic update will be disabled.", "Yes", "No"))
                         {
                             try
                             {

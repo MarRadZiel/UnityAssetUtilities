@@ -46,9 +46,15 @@ public class ExternalAssetsManagerWindow : EditorWindow
             if (GUILayout.Toggle(currentTab == Tab.About, new GUIContent("About"), EditorStyles.toolbarButton)) currentTab = Tab.About;
             GUILayout.FlexibleSpace();
             bool autoSync = GUILayout.Toggle(ExternalAssetsUpdater.ExternalAssetsManagerSettings.autoSynchronization, new GUIContent("Auto synchronization", "Toggles external asset auto synchronization"));
-            if (ExternalAssetsUpdater.ExternalAssetsManagerSettings.autoSynchronization != autoSync)
+            EditorGUILayout.Space();
+            EditorGUI.BeginDisabledGroup(!autoSync);
+            bool notifications = GUILayout.Toggle(ExternalAssetsUpdater.ExternalAssetsManagerSettings.notifyBeforeUpdate, new GUIContent("Notifications", "Toggles notifications before asset updating"));
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.Space();
+            if (ExternalAssetsUpdater.ExternalAssetsManagerSettings.autoSynchronization != autoSync || ExternalAssetsUpdater.ExternalAssetsManagerSettings.notifyBeforeUpdate != notifications)
             {
                 ExternalAssetsUpdater.ExternalAssetsManagerSettings.autoSynchronization = autoSync;
+                ExternalAssetsUpdater.ExternalAssetsManagerSettings.notifyBeforeUpdate = notifications;
                 EditorUtility.SetDirty(ExternalAssetsUpdater.ExternalAssetsManagerSettings);
                 AssetDatabase.SaveAssetIfDirty(ExternalAssetsUpdater.ExternalAssetsManagerSettings);
             }
@@ -116,6 +122,7 @@ public class ExternalAssetsManagerWindow : EditorWindow
                                 EditorGUILayout.BeginHorizontal();
                                 if (externalAsset.SourceFileInfo.Exists)
                                 {
+                                    bool isAssetUpToDate = externalAsset.IsAssetUpToDate();
                                     EditorGUI.BeginDisabledGroup(true);
                                     EditorGUILayout.BeginVertical();
 
@@ -126,7 +133,7 @@ public class ExternalAssetsManagerWindow : EditorWindow
 
                                     EditorGUILayout.BeginHorizontal();
                                     Color defaultGUIColor = GUI.color;
-                                    GUI.color = externalAsset.IsAssetUpToDate() ? Color.green : Color.red;
+                                    GUI.color = isAssetUpToDate ? Color.green : Color.red;
                                     EditorGUILayout.TextField(externalAsset.AssetFileInfo.LastWriteTime.ToString());
                                     EditorGUILayout.TextField(externalAsset.SourceFileInfo.LastWriteTime.ToString());
                                     GUI.color = defaultGUIColor;
@@ -142,6 +149,7 @@ public class ExternalAssetsManagerWindow : EditorWindow
                                             toRemove = externalAsset;
                                         }
                                     }
+                                    EditorGUI.BeginDisabledGroup(isAssetUpToDate);
                                     if (GUILayout.Button(new GUIContent(EditorGUIUtility.IconContent("TreeEditor.Refresh").image, "Update external asset"), GUILayout.MaxWidth(25f), GUILayout.Height(EditorGUIUtility.singleLineHeight * 2)))
                                     {
                                         string absolutePath = AssetsUtility.AssetsPathToAbsolutePath(externalAsset.AssetPath);
@@ -159,8 +167,12 @@ public class ExternalAssetsManagerWindow : EditorWindow
                                             Debug.LogError($"Error during external asset update.\n{e}");
                                         }
                                     }
+                                    EditorGUI.EndDisabledGroup();
                                     EditorGUI.BeginDisabledGroup(!ExternalAssetsUpdater.ExternalAssetsManagerSettings.autoSynchronization);
                                     externalAsset.AutoUpdate = GUILayout.Toggle(externalAsset.AutoUpdate, new GUIContent("Auto", $"Toggles this external asset auto-synchronization.{(ExternalAssetsUpdater.ExternalAssetsManagerSettings.autoSynchronization ? string.Empty : " Auto synchronization must be enabled globally first.")}"), GUI.skin.button, GUILayout.MaxWidth(50f), GUILayout.Height(EditorGUIUtility.singleLineHeight * 2));
+                                    EditorGUI.EndDisabledGroup();
+                                    EditorGUI.BeginDisabledGroup(!ExternalAssetsUpdater.ExternalAssetsManagerSettings.autoSynchronization || !ExternalAssetsUpdater.ExternalAssetsManagerSettings.notifyBeforeUpdate);
+                                    externalAsset.NotifyBeforeUpdate = GUILayout.Toggle(externalAsset.NotifyBeforeUpdate, new GUIContent("Notify", $"Toggles notification before asset update.{(ExternalAssetsUpdater.ExternalAssetsManagerSettings.notifyBeforeUpdate ? string.Empty : " Auto synchronization and notifications must be enabled globally first.")}"), GUI.skin.button, GUILayout.MaxWidth(50f), GUILayout.Height(EditorGUIUtility.singleLineHeight * 2));
                                     EditorGUI.EndDisabledGroup();
                                 }
                                 else
