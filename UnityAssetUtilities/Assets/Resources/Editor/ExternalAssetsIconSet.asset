@@ -9,10 +9,8 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 17892070260edc247a7eec13eb952ec2, type: 3}
-  m_Name: ExternalAssetsManagerSettings
+  m_Script: {fileID: 11500000, guid: 0a765ef03f457504c96eb23621641949, type: 3}
+  m_Name: ExternalAssetsIconSet
   m_EditorClassIdentifier: 
-  autoSynchronization: 1
-  notifyBeforeUpdate: 1
-  externalAssets: []
-  iconSet: {fileID: 11400000, guid: 00a3c87db6c0ccc40acc83c05629a08f, type: 2}
+  keys: []
+  textures: []

@@ -14,6 +14,9 @@ public class ExternalAssetsManagerSettings : ScriptableObject
     public bool notifyBeforeUpdate = true;
 
     [SerializeField]
+    public IconSet iconSet;
+
+    [SerializeField]
     [HideInInspector]
     private List<ExternalAsset> externalAssets = new List<ExternalAsset>();
 

@@ -94,7 +94,7 @@ public class ExternalAssetsManagerWindow : EditorWindow
                         bool targetAssetAvailable = !ExternalAssetsUpdater.ExternalAssetsManagerSettings.ContainsAsset(newExternalAssetTargetPath);
                         if (targetAssetAvailable)
                         {
-                            if (GUILayout.Button(new GUIContent("ADD")))
+                            if (GUILayout.Button(new GUIContent(EditorGUIUtility.isProSkin ? ExternalAssetsUpdater.ExternalAssetsManagerSettings.iconSet["externalAssets_add_icon"] : ExternalAssetsUpdater.ExternalAssetsManagerSettings.iconSet["externalAssets_add_icon_dark"], "Add"), GUILayout.MaxHeight(EditorGUIUtility.singleLineHeight * 2.1f), GUILayout.MaxWidth(EditorGUIUtility.singleLineHeight * 2.1f)))
                             {
                                 ExternalAssetsUpdater.ExternalAssetsManagerSettings.RegisterExternalAsset(newExternalAssetPath, newExternalAssetTargetPath);
                                 EditorUtility.SetDirty(ExternalAssetsUpdater.ExternalAssetsManagerSettings);
@@ -142,7 +142,7 @@ public class ExternalAssetsManagerWindow : EditorWindow
                                     EditorGUILayout.EndVertical();
                                     EditorGUI.EndDisabledGroup();
 
-                                    if (GUILayout.Button(new GUIContent(EditorGUIUtility.IconContent("TreeEditor.Trash").image, "Remove external asset"), GUILayout.MaxWidth(25f), GUILayout.Height(EditorGUIUtility.singleLineHeight * 2)))
+                                    if (GUILayout.Button(new GUIContent(EditorGUIUtility.isProSkin ? ExternalAssetsUpdater.ExternalAssetsManagerSettings.iconSet["externalAssets_remove_icon"] : ExternalAssetsUpdater.ExternalAssetsManagerSettings.iconSet["externalAssets_remove_icon_dark"], "Remove external asset"), GUILayout.MaxWidth(EditorGUIUtility.singleLineHeight * 2), GUILayout.MaxHeight(EditorGUIUtility.singleLineHeight * 2)))
                                     {
                                         if (EditorUtility.DisplayDialog("Removing external asset", "Are you sure to delete this external asset binding?\nBoth external file and asset won't be deleted.", "Yes", "No"))
                                         {
@@ -150,7 +150,7 @@ public class ExternalAssetsManagerWindow : EditorWindow
                                         }
                                     }
                                     EditorGUI.BeginDisabledGroup(isAssetUpToDate);
-                                    if (GUILayout.Button(new GUIContent(EditorGUIUtility.IconContent("TreeEditor.Refresh").image, "Update external asset"), GUILayout.MaxWidth(25f), GUILayout.Height(EditorGUIUtility.singleLineHeight * 2)))
+                                    if (GUILayout.Button(new GUIContent(EditorGUIUtility.isProSkin ? ExternalAssetsUpdater.ExternalAssetsManagerSettings.iconSet["externalAssets_refresh_icon"] : ExternalAssetsUpdater.ExternalAssetsManagerSettings.iconSet["externalAssets_refresh_icon_dark"], "Update external asset"), GUILayout.MaxWidth(EditorGUIUtility.singleLineHeight * 2), GUILayout.MaxHeight(EditorGUIUtility.singleLineHeight * 2)))
                                     {
                                         string absolutePath = AssetsUtility.AssetsPathToAbsolutePath(externalAsset.AssetPath);
                                         try
@@ -169,10 +169,10 @@ public class ExternalAssetsManagerWindow : EditorWindow
                                     }
                                     EditorGUI.EndDisabledGroup();
                                     EditorGUI.BeginDisabledGroup(!ExternalAssetsUpdater.ExternalAssetsManagerSettings.autoSynchronization);
-                                    externalAsset.AutoUpdate = GUILayout.Toggle(externalAsset.AutoUpdate, new GUIContent("Auto", $"Toggles this external asset auto-synchronization.{(ExternalAssetsUpdater.ExternalAssetsManagerSettings.autoSynchronization ? string.Empty : " Auto synchronization must be enabled globally first.")}"), GUI.skin.button, GUILayout.MaxWidth(50f), GUILayout.Height(EditorGUIUtility.singleLineHeight * 2));
+                                    externalAsset.AutoUpdate = GUILayout.Toggle(externalAsset.AutoUpdate, new GUIContent(EditorGUIUtility.isProSkin ? ExternalAssetsUpdater.ExternalAssetsManagerSettings.iconSet["externalAssets_synchronize_icon"] : ExternalAssetsUpdater.ExternalAssetsManagerSettings.iconSet["externalAssets_synchronize_icon_dark"], $"Toggles this external asset auto-synchronization.{(ExternalAssetsUpdater.ExternalAssetsManagerSettings.autoSynchronization ? string.Empty : " Auto synchronization must be enabled globally first.")}"), GUI.skin.button, GUILayout.MaxWidth(EditorGUIUtility.singleLineHeight * 2), GUILayout.MaxHeight(EditorGUIUtility.singleLineHeight * 2));
                                     EditorGUI.EndDisabledGroup();
                                     EditorGUI.BeginDisabledGroup(!ExternalAssetsUpdater.ExternalAssetsManagerSettings.autoSynchronization || !ExternalAssetsUpdater.ExternalAssetsManagerSettings.notifyBeforeUpdate);
-                                    externalAsset.NotifyBeforeUpdate = GUILayout.Toggle(externalAsset.NotifyBeforeUpdate, new GUIContent("Notify", $"Toggles notification before asset update.{(ExternalAssetsUpdater.ExternalAssetsManagerSettings.notifyBeforeUpdate ? string.Empty : " Auto synchronization and notifications must be enabled globally first.")}"), GUI.skin.button, GUILayout.MaxWidth(50f), GUILayout.Height(EditorGUIUtility.singleLineHeight * 2));
+                                    externalAsset.NotifyBeforeUpdate = GUILayout.Toggle(externalAsset.NotifyBeforeUpdate, new GUIContent(EditorGUIUtility.isProSkin ? ExternalAssetsUpdater.ExternalAssetsManagerSettings.iconSet["externalAssets_notifications_icon"] : ExternalAssetsUpdater.ExternalAssetsManagerSettings.iconSet["externalAssets_notifications_icon_dark"], $"Toggles notification before asset update.{(ExternalAssetsUpdater.ExternalAssetsManagerSettings.notifyBeforeUpdate ? string.Empty : " Auto synchronization and notifications must be enabled globally first.")}"), GUI.skin.button, GUILayout.MaxWidth(EditorGUIUtility.singleLineHeight * 2), GUILayout.MaxHeight(EditorGUIUtility.singleLineHeight * 2));
                                     EditorGUI.EndDisabledGroup();
                                 }
                                 else
@@ -227,7 +227,7 @@ public class ExternalAssetsManagerWindow : EditorWindow
     private static void ShowWindow()
     {
         var window = GetWindow<ExternalAssetsManagerWindow>();
-        window.titleContent = new GUIContent("External Assets Manager", EditorGUIUtility.IconContent("d_DefaultAsset Icon").image);
+        window.titleContent = new GUIContent("External Assets Manager", EditorGUIUtility.isProSkin ? ExternalAssetsUpdater.ExternalAssetsManagerSettings.iconSet["externalAssets_icon"] : ExternalAssetsUpdater.ExternalAssetsManagerSettings.iconSet["externalAssets_icon_dark"]);
         window.Show();
     }
 }
