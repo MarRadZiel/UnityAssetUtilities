@@ -17,6 +17,7 @@ public class IconSetEditor : Editor
     public override void OnInspectorGUI()
     {
         base.OnInspectorGUI();
+        bool modified = false;
 
         EditorGUILayout.BeginHorizontal();
         newKey = EditorGUILayout.TextField(newKey);
@@ -37,9 +38,11 @@ public class IconSetEditor : Editor
         EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(newKey) || newTexture == null || containsKey);
         if (GUILayout.Button(new GUIContent("+")))
         {
+            Undo.RecordObject(iconSet, "Added icon to set");
             iconSet.AddTexture(newKey, newTexture);
             newKey = null;
             newTexture = null;
+            modified = true;
         }
         EditorGUI.EndDisabledGroup();
         EditorGUILayout.EndHorizontal();
@@ -61,7 +64,13 @@ public class IconSetEditor : Editor
         }
         if (!string.IsNullOrEmpty(toRemove))
         {
+            Undo.RecordObject(iconSet, "Removed icon from set");
             iconSet.RemoveTexture(toRemove);
+            modified = true;
+        }
+        if (modified)
+        {
+            EditorUtility.SetDirty(iconSet);
         }
     }
 }
