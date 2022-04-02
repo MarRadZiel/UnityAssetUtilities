@@ -10,3 +10,7 @@ Allows defining a binding between file outside of "Assets" folder and Unity asse
 This can come in handy if you plan to use same file for multiple projects. You could create an external asset binding so every time this file is modified, asset in the project is automatically updated.</br>
 External asset can be used for example to synchronize your dll library shared by your Unity projects, so that always it's newest version could be used.</br>
 Generally this solution could help if you plan to use asset stored outside of "Assets" folder for any reason.
+
+## IconSet
+Simple ScriptableObject allowing to store multiple Textures in a single asset.</br>
+It is used by other utilities in the project to simplify referencing textures used by editor scripts.
