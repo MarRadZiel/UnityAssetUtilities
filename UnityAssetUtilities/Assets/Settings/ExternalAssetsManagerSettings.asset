@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   autoSynchronization: 1
   notifyBeforeUpdate: 1
-  iconSet: {fileID: 11400000, guid: 00a3c87db6c0ccc40acc83c05629a08f, type: 2}
+  iconSet: {fileID: 11400000, guid: 35f8e9e1b23ec9d438fd0981745d3d66, type: 2}
   externalAssets: []
