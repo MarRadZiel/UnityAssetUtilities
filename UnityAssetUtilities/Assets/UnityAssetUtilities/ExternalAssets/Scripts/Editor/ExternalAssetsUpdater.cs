@@ -11,6 +11,7 @@ namespace UnityAssetUtilities
         /// <summary>Settings for ExternalAssetsManager.</summary>
         public static ExternalAssetsManagerSettings ExternalAssetsManagerSettings => _externalAssetsManagerSettings;
 
+        private const string defaultSettingsAssetPath = "Assets/Settings/ExternalAssetsManagerSettings.asset";
 
         static ExternalAssetsUpdater()
         {
@@ -30,27 +31,39 @@ namespace UnityAssetUtilities
             }
         }
 
-        private static void LoadExternalAssetsManagerSettings()
+        /// <summary>Load ExternalAssetsManagerSettings ScriptableObject or creates a default one in Assets/Settings folder.</summary>
+        public static void LoadExternalAssetsManagerSettings()
         {
-            Debug.Log("Loading External Asset Manager Settings...");
             string[] assetGUIDs = AssetDatabase.FindAssets($"t:{nameof(ExternalAssetsManagerSettings)}");
             if (assetGUIDs != null && assetGUIDs.Length > 0)
             {
                 _externalAssetsManagerSettings = AssetDatabase.LoadAssetAtPath<ExternalAssetsManagerSettings>(AssetDatabase.GUIDToAssetPath(assetGUIDs[0]));
-                Debug.Log("Settings asset loaded.");
             }
             else
             {
-                CreateExternalAssetsManagerSettingsAsset();
-                Debug.Log("Created new settings asset.");
+                _externalAssetsManagerSettings = AssetDatabase.LoadAssetAtPath(defaultSettingsAssetPath, typeof(ExternalAssetsManagerSettings)) as ExternalAssetsManagerSettings;
+                if (_externalAssetsManagerSettings == null)
+                {
+                    CreateExternalAssetsManagerSettingsAsset();
+                }
+            }
+            if (_externalAssetsManagerSettings == null)
+            {
+                Debug.LogError($"{nameof(ExternalAssetsManagerSettings)} asset couldn't be loaded or created.");
             }
         }
 
-        /// <summary>Creates a default ExternalAssetsManagerSettings ScriptableObject in Assets/Settings folder.</summary>
-        public static void CreateExternalAssetsManagerSettingsAsset()
+        private static void CreateExternalAssetsManagerSettingsAsset()
         {
             _externalAssetsManagerSettings = ScriptableObject.CreateInstance<ExternalAssetsManagerSettings>();
-            AssetDatabase.CreateFolder("Assets", "Settings");
+            if (!AssetDatabase.IsValidFolder("Assets/Settings")) AssetDatabase.CreateFolder("Assets", "Settings");
+            foreach (var iconSet in Resources.FindObjectsOfTypeAll<IconSet>())
+            {
+                if (iconSet.name.Equals("ExternalAssetsIconSet"))
+                {
+                    _externalAssetsManagerSettings.iconSet = iconSet;
+                }
+            }
             AssetDatabase.CreateAsset(_externalAssetsManagerSettings, AssetDatabase.GenerateUniqueAssetPath("Assets/Settings/ExternalAssetsManagerSettings.asset"));
             AssetDatabase.SaveAssets();
             Selection.activeObject = _externalAssetsManagerSettings;

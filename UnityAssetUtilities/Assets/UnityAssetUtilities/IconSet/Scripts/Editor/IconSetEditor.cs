@@ -97,5 +97,13 @@ namespace UnityAssetUtilities
                 EditorUtility.SetDirty(iconSet);
             }
         }
+
+        [MenuItem("Assets/Create/Unity Asset Utilities/Icon Set")]
+        private static void Create()
+        {
+            var asset = ScriptableObject.CreateInstance<IconSet>();
+            var path = $"{AssetDatabase.GetAssetPath(Selection.activeObject)}/NewIconSet.asset";
+            ProjectWindowUtil.CreateAsset(asset, path);
+        }
     }
 }

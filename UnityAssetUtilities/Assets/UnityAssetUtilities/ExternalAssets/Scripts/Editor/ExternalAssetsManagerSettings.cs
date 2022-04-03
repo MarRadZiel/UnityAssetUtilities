@@ -19,6 +19,7 @@ namespace UnityAssetUtilities
 
         /// <summary>Icon set used by ExternalAssetsManager window.</summary>
         [SerializeField]
+        [HideInInspector]
         public IconSet iconSet;
 
         [SerializeField]
@@ -89,6 +90,32 @@ namespace UnityAssetUtilities
                 EditorGUILayout.ObjectField(AssetDatabase.LoadAssetAtPath(externalAsset.AssetPath, typeof(Object)), typeof(Object), allowSceneObjects: false);
             }
             EditorGUI.EndDisabledGroup();
+        }
+
+        [MenuItem("Assets/Create/Unity Asset Utilities/Settings/External Assets Manager Settings")]
+        private static void Create()
+        {
+            string[] assetGUIDs = AssetDatabase.FindAssets($"t:{nameof(ExternalAssetsManagerSettings)}");
+            if (assetGUIDs == null || assetGUIDs.Length == 0)
+            {
+                var asset = ScriptableObject.CreateInstance<ExternalAssetsManagerSettings>();
+                foreach (var iconSet in Resources.FindObjectsOfTypeAll<IconSet>())
+                {
+                    if (iconSet.name.Equals("ExternalAssetsIconSet"))
+                    {
+                        asset.iconSet = iconSet;
+                    }
+                }
+                var path = $"{AssetDatabase.GetAssetPath(Selection.activeObject)}/ExternalAssetsManagerSettings.asset";
+                ProjectWindowUtil.CreateAsset(asset, path);
+            }
+            else
+            {
+                string assetPath = AssetDatabase.GUIDToAssetPath(assetGUIDs[0]);
+                var asset = AssetDatabase.LoadAssetAtPath(assetPath, typeof(ExternalAssetsManagerSettings));
+                if (asset != null) EditorGUIUtility.PingObject(asset);
+                EditorUtility.DisplayDialog("Asset already exists", $"{nameof(ExternalAssetsManagerSettings)} asset already exists. New one won't be created.", "Ok");
+            }
         }
     }
 }

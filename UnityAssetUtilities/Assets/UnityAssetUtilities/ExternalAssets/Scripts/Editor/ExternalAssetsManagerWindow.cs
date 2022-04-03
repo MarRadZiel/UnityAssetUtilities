@@ -52,7 +52,7 @@ namespace UnityAssetUtilities
         {
             if (ExternalAssetsUpdater.ExternalAssetsManagerSettings == null)
             {
-                ExternalAssetsUpdater.CreateExternalAssetsManagerSettingsAsset();
+                ExternalAssetsUpdater.LoadExternalAssetsManagerSettings();
             }
             else
             {
