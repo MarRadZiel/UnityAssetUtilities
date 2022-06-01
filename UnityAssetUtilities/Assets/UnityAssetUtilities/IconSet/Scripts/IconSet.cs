@@ -4,7 +4,6 @@ using UnityEngine;
 namespace UnityAssetUtilities
 {
     /// <summary>Stores Texture assets that can be retrieved by their key string.</summary>
-    [CreateAssetMenu(fileName = "IconSet", menuName = "Icon Set", order = 100)]
     public class IconSet : ScriptableObject, ISerializationCallbackReceiver
     {
         [HideInInspector]
