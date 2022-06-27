@@ -15,5 +15,9 @@ Simple ScriptableObject allowing to store multiple Textures in a single asset.</
 It is used by other utilities in the project to simplify referencing textures used by editor scripts.
 
 ## EditorIcons
-Allows to extract Unity Editor icons. To get editor icons simply create EditorIcons asset.</br>
+Allows to extract Unity Editor icons. To get editor icons information simply create EditorIcons asset.</br>
+Extraction of an icon asset is done by saving its copy as an EditorIcons asset's subassets.</br>
 Based on <a href="https://github.com/halak/unity-editor-icons">halak/unity-editor-icons<a> 
+
+## IconChanger
+Simple solution that allows to change selected asset icon.

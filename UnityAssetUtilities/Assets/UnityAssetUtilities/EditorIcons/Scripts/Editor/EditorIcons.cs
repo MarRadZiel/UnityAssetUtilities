@@ -20,15 +20,22 @@ namespace UnityAssetUtilities
         [SerializeField]
         private List<float> iconBrightness = new List<float>();
 
+        [HideInInspector]
+        [SerializeField]
+        private List<bool> iconExtractionStatus = new List<bool>();
 
+        /// <summary>Stores extracted editor icons information.</summary>
         public List<EditorIconEntry> IconData = new List<EditorIconEntry>();
+
+        private Dictionary<Texture2D, int> indexMap = new Dictionary<Texture2D, int>();
+
 
         private const string proxyAssetPath = "Assets/temporaryEditorIconsProxyAsset.mat";
 
         private static Material proxyAsset;
 
-
-        public void ExtractEditorIcons()
+        /// <summary>Performs editor icons information extraction.</summary>
+        public void ExtractEditorIconsInfo()
         {
             if (proxyAsset == null) LoadOrCreateProxyAsset();
             var editorAssetBundle = GetEditorAssetBundle();
@@ -38,6 +45,8 @@ namespace UnityAssetUtilities
                 var icon = editorAssetBundle.LoadAsset<Texture2D>(assetName);
                 if (icon == null)
                     continue;
+
+                iconExtractionStatus.Add(false);
                 icons.Add(icon);
                 iconFileIds.Add(GetFileId(icon));
                 iconBrightness.Add(GetBrightness(icon));
@@ -46,6 +55,52 @@ namespace UnityAssetUtilities
             OnAfterDeserialize();
         }
 
+        /// <summary>Saves copy of specified editor icon as this ScriptableObject subasset.</summary>
+        /// <param name="icon">Editor icon reference.</param>
+        /// <param name="saveAsset">Should this asset be set as dirty and saved.</param>
+        public void ExtractIcon(Texture2D icon, bool saveAsset)
+        {
+            ExtractIcon(indexMap[icon], saveAsset);
+        }
+        private void ExtractIcon(int index, bool saveAsset)
+        {
+            if (iconExtractionStatus.Count > index && iconExtractionStatus[index]) return;
+
+            Texture2D iconCopy = new Texture2D(icons[index].width, icons[index].height, icons[index].format, icons[index].mipmapCount, true);
+            Graphics.CopyTexture(icons[index], iconCopy);
+            UnityEngine.Object ob = Instantiate(iconCopy);
+            ob.name = icons[index].name;
+            AssetDatabase.AddObjectToAsset(ob, this);
+            iconExtractionStatus[index] = true;
+            if (saveAsset)
+            {
+                EditorUtility.SetDirty(this);
+                AssetDatabase.SaveAssetIfDirty(this);
+            }
+        }
+
+        /// <summary>Saves copy of all editor icons as this ScriptableObject subassets.</summary>
+        public void ExtractAllIcons()
+        {
+            for (int i = 0; i < icons.Count; ++i)
+            {
+                ExtractIcon(i, saveAsset: false);
+            }
+            EditorUtility.SetDirty(this);
+            AssetDatabase.SaveAssetIfDirty(this);
+        }
+
+        /// <summary>Checks if specified icon was already extracted.</summary>
+        /// <param name="icon">Editor icon reference to check.</param>
+        /// <returns>True if icon was already extracted.</returns>
+        public bool WasExtracted(Texture2D icon)
+        {
+            return WasExtracted(indexMap[icon]);
+        }
+        private bool WasExtracted(int index)
+        {
+            return iconExtractionStatus[index];
+        }
 
         private void LoadOrCreateProxyAsset()
         {
@@ -152,6 +207,7 @@ namespace UnityAssetUtilities
 
         public void OnAfterDeserialize()
         {
+            indexMap = new Dictionary<Texture2D, int>();
             IconData = new List<EditorIconEntry>();
             for (int i = 0; i < icons.Count && i < iconFileIds.Count && i < iconBrightness.Count; ++i)
             {
@@ -161,9 +217,11 @@ namespace UnityAssetUtilities
                     fileId = iconFileIds[i],
                     brightness = iconBrightness[i]
                 });
+                indexMap.Add(icons[i], i);
             }
         }
 
+        /// <summary>Stores information about single extracted editor icon.</summary>
         public class EditorIconEntry
         {
             public Texture2D icon;
@@ -175,6 +233,12 @@ namespace UnityAssetUtilities
     [CustomEditor(typeof(EditorIcons))]
     public class EditorIconsEditor : Editor
     {
+        private enum SearchType
+        {
+            Name,
+            FileID
+        }
+
         [SerializeField]
         private Vector2 scrollPosition;
 
@@ -195,6 +259,11 @@ namespace UnityAssetUtilities
             }
         }
 
+        private SearchType searchType = SearchType.Name;
+        private string searchString = string.Empty;
+        private bool matchCase = false;
+
+
         private void OnEnable()
         {
             editorIcons = (EditorIcons)target;
@@ -203,6 +272,24 @@ namespace UnityAssetUtilities
         public override void OnInspectorGUI()
         {
             base.OnInspectorGUI();
+
+            EditorGUILayout.SelectableLabel($"GUID: 0000000000000000d000000000000000");
+
+            if (GUILayout.Button(new GUIContent("Extract all icons", "Saves copy of all icon assets as EditorIcons subassets.")))
+            {
+                editorIcons.ExtractAllIcons();
+            }
+            EditorGUILayout.Space();
+
+            EditorGUILayout.BeginHorizontal();
+            searchString = GUILayout.TextField(searchString, GUI.skin.FindStyle("ToolbarSeachTextField"));
+            EditorGUI.BeginDisabledGroup(searchType != SearchType.Name);
+            matchCase = GUILayout.Toggle(matchCase, new GUIContent("Aa", "Match case"), EditorStyles.toolbarButton, GUILayout.Width(25.0f));
+            EditorGUI.EndDisabledGroup();
+            if (GUILayout.Toggle(searchType == SearchType.Name, new GUIContent("By name"), EditorStyles.toolbarButton, GUILayout.Width(100.0f))) searchType = SearchType.Name;
+            if (GUILayout.Toggle(searchType == SearchType.FileID, new GUIContent("By FileID"), EditorStyles.toolbarButton, GUILayout.Width(100.0f))) searchType = SearchType.FileID;
+            EditorGUILayout.EndHorizontal();
+
             DrawIcons();
         }
 
@@ -210,13 +297,36 @@ namespace UnityAssetUtilities
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.GetControlRect(GUILayout.Height(1f), GUILayout.Width(50f));
-            EditorGUILayout.SelectableLabel("Name", GUILayout.MaxWidth(200f));
-            EditorGUILayout.SelectableLabel("FileID", GUILayout.MaxWidth(200f));
-            EditorGUILayout.SelectableLabel("Size", GUILayout.Width(50f));
+            GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
+            headerStyle.fontStyle = FontStyle.Bold;
+            EditorGUILayout.SelectableLabel("Name", headerStyle, GUILayout.MaxWidth(200f));
+            EditorGUILayout.SelectableLabel("FileID", headerStyle, GUILayout.MaxWidth(200f));
+            EditorGUILayout.SelectableLabel("Size", headerStyle, GUILayout.Width(50f));
+            EditorGUILayout.LabelField(GUIContent.none, GUILayout.Width(50f));
             EditorGUILayout.EndHorizontal();
             scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
+            bool isSearching = !string.IsNullOrWhiteSpace(searchString);
+            string lowercaseSearchingString = searchString.ToLower();
             foreach (var entry in editorIcons.IconData)
             {
+                if (isSearching)
+                {
+                    if (searchType == SearchType.Name)
+                    {
+                        if (matchCase)
+                        {
+                            if (!entry.icon.name.Contains(searchString)) continue;
+                        }
+                        else
+                        {
+                            if (!entry.icon.name.ToLower().Contains(lowercaseSearchingString)) continue;
+                        }
+                    }
+                    else if (searchType == SearchType.FileID)
+                    {
+                        if (!entry.fileId.ToLower().Contains(lowercaseSearchingString)) continue;
+                    }
+                }
                 EditorGUILayout.BeginHorizontal();
                 Rect rect = EditorGUILayout.GetControlRect(GUILayout.Height(50f), GUILayout.Width(50f));
                 if (entry.brightness < 0.5f)
@@ -234,7 +344,13 @@ namespace UnityAssetUtilities
                 GUI.DrawTexture(rect, entry.icon, ScaleMode.ScaleToFit);
                 EditorGUILayout.SelectableLabel(entry.icon.name, GUILayout.MaxWidth(200f));
                 EditorGUILayout.SelectableLabel(entry.fileId, GUILayout.MaxWidth(200f));
-                EditorGUILayout.SelectableLabel($"{entry.icon.width}x{entry.icon.height}", GUILayout.Width(50f));
+                EditorGUILayout.LabelField(new GUIContent("{entry.icon.width}x{entry.icon.height}"), GUILayout.Width(50f));
+                EditorGUI.BeginDisabledGroup(editorIcons.WasExtracted(entry.icon));
+                if (GUILayout.Button(new GUIContent("Extract", "Saves copy of icon asset as EditorIcons sub asset."), GUILayout.Width(50f)))
+                {
+                    editorIcons.ExtractIcon(entry.icon, true);
+                }
+                EditorGUI.EndDisabledGroup();
                 EditorGUILayout.EndHorizontal();
             }
             EditorGUILayout.EndScrollView();
@@ -246,12 +362,12 @@ namespace UnityAssetUtilities
             string[] assetGUIDs = AssetDatabase.FindAssets($"t:{nameof(EditorIcons)}");
             if (assetGUIDs == null || assetGUIDs.Length == 0)
             {
-                if (EditorUtility.DisplayDialog("Confirmation", $"{nameof(EditorIcons)} asset is about to be created. During creation the editor icons will be extracted. This can take up to several minutes. Do you really want to create it now?", "Yes", "No"))
+                if (EditorUtility.DisplayDialog("Confirmation", $"{nameof(EditorIcons)} asset is about to be created. During creation the editor icons information will be extracted. This can take up to several minutes. Do you really want to create it now?", "Yes", "No"))
                 {
-                    var asset = ScriptableObject.CreateInstance<EditorIcons>();
+                    EditorIcons asset = ScriptableObject.CreateInstance<EditorIcons>();
                     var path = $"{AssetDatabase.GetAssetPath(Selection.activeObject)}/EditorIcons.asset";
                     ProjectWindowUtil.CreateAsset(asset, path);
-                    asset.ExtractEditorIcons();
+                    asset.ExtractEditorIconsInfo();
                     EditorUtility.SetDirty(asset);
                     AssetDatabase.SaveAssetIfDirty(asset);
                 }
