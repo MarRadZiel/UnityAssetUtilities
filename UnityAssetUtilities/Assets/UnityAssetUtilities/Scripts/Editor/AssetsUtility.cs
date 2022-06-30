@@ -47,6 +47,7 @@ namespace UnityAssetUtilities
         /// <returns>Path as Assets path.</returns>
         public static string AbsolutePathToAssetsPath(string absolutePath)
         {
+            absolutePath = absolutePath.Replace('\\', '/').Trim();
             return $"Assets/{absolutePath.Replace(Application.dataPath, string.Empty)}";
         }
         /// <summary>Converts Assets relative path to absolute path.</summary>

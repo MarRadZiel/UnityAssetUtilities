@@ -21,3 +21,9 @@ Based on <a href="https://github.com/halak/unity-editor-icons">halak/unity-edito
 
 ## IconChanger
 Simple solution that allows to change selected asset icon.
+
+## Asset Hiding Manager
+Solution for managing hidden assets.
+Displays and allows to hide/unhide assets from Unity. Hidden assets are not included in build and asset importing process.</br>
+This can help to reduce build size and project import time when there are assets that won't be used in current build.</br>
+Hiding and unhiding of assets is done by renaming files to special names ignored by Unity asset database (names starting with dot).
