@@ -139,7 +139,9 @@ namespace UnityAssetUtilities
                     {
                         BuildTreeNode(dir, null, depth + 1, ref items, ref id);
                     }
-                    foreach (var fil in directory.GetFiles())
+                    var files = new List<FileInfo>(directory.GetFiles());
+                    files.Sort((a, b) => a.Name.TrimStart('.').CompareTo(b.Name.TrimStart('.')));
+                    foreach (var fil in files)
                     {
                         if (fil.Extension != ".meta")
                         {
@@ -429,7 +431,15 @@ namespace UnityAssetUtilities
             {
                 string unityAssetPath = path.Replace("\\", "/").Replace(Application.dataPath, "Assets");
                 var icon = AssetDatabase.GetCachedIcon(unityAssetPath);
-                if (icon != null) return icon;
+                if (icon != null)
+                {
+                    assetHidingManagerSettings.CacheAssetIcon(System.IO.Path.GetExtension(path), icon);
+                    return icon;
+                }
+                else if (assetHidingManagerSettings.TryGetIconForAsset(System.IO.Path.GetExtension(path), out var cachedIcon))
+                {
+                    return cachedIcon;
+                }
                 else
                 {
                     return EditorGUIUtility.IconContent("DefaultAsset Icon").image;

@@ -13,3 +13,4 @@ MonoBehaviour:
   m_Name: AssetHidingManagerSettings
   m_EditorClassIdentifier: 
   iconSet: {fileID: 11400000, guid: 61241803c13cd064ab1585e3a87b3f3f, type: 2}
+  iconForAssetsCache: []
