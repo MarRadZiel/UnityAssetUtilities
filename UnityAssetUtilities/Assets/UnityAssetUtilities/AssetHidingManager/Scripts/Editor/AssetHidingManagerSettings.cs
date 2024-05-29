@@ -14,6 +14,10 @@ namespace UnityAssetUtilities
 
         [SerializeField]
         [HideInInspector]
+        private bool syncSelection;
+
+        [SerializeField]
+        [HideInInspector]
         private List<AssetExtensionIcon> iconForAssetsCache;
 
         /// <summary>Tries to retrieve asset icon cached by AssetHidingManager.</summary>
@@ -85,6 +89,26 @@ namespace UnityAssetUtilities
             iconForAssetsCache.Clear();
             EditorUtility.SetDirty(this);
             AssetDatabase.SaveAssetIfDirty(this);
+        }
+
+        /// <summary>Retrieves selection synchronization enablement.</summary>
+        /// <returns>True if synchronization is enabled, false otherwise.</returns>
+        public bool IsSelectionSyncEnabled()
+        {
+            return syncSelection;
+        }
+        /// <summary>Set enablement of selection synchronization.</summary>
+        /// <param name="enabled">True to enable selection sync, false to disable it.</param>
+        /// <returns>State of sync enablement.</returns>
+        public bool SetSelectionSync(bool enabled)
+        {
+            if (syncSelection != enabled)
+            {
+                syncSelection = enabled;
+                EditorUtility.SetDirty(this);
+                AssetDatabase.SaveAssetIfDirty(this);
+            }
+            return syncSelection;
         }
 
 

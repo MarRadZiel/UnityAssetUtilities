@@ -38,25 +38,51 @@ namespace UnityAssetUtilities
 
         private void OnEnable()
         {
-            if (assetsTreeViewState == null)
-                assetsTreeViewState = new TreeViewState();
-
+            assetsTreeViewState ??= new TreeViewState();
             assetsTreeView = new AssetsTreeView(assetsTreeViewState);
             assetsTreeView.SetExpanded(1, true);
+            Selection.selectionChanged += OnSelectionChanged;
+        }
+        private void OnDisable()
+        {
+            Selection.selectionChanged -= OnSelectionChanged;
         }
 
         private void OnGUI()
         {
-            showHelp = GUILayout.Toggle(showHelp, new GUIContent("Info", EditorGUIUtility.IconContent("d__Help").image), "Button");
+            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+            GUILayout.FlexibleSpace();
+            bool wasSelectionSyncEnabled = assetHidingManagerSettings.IsSelectionSyncEnabled();
+            bool isSelectionSyncEnabled = assetHidingManagerSettings.SetSelectionSync(GUILayout.Toggle(wasSelectionSyncEnabled, new GUIContent(/*"Sync selection", */EditorGUIUtility.IconContent("d_Refresh").image, $"Synchronizes selection with project asset browser.\nSynchronization is {(wasSelectionSyncEnabled ? "enabled" : "disabled")}."), EditorStyles.toolbarButton));
+
+            showHelp = GUILayout.Toggle(showHelp, new GUIContent(/*"Info",*/ EditorGUIUtility.IconContent("d__Help").image, "Shows help message."), EditorStyles.toolbarButton);
+            EditorGUILayout.EndHorizontal();
             if (showHelp)
             {
                 EditorGUILayout.HelpBox("This is a simple tool to hide and unhide assets for import.\nAll it does is renaming assets and their meta files by adding or removing '.' character at the beginning of the filename.\nHidden assets are not visible in Project window, and won't be included in build. There are also ommited during import.\nTo hide/unhide asset press eye icon next to its name.", MessageType.Info);
             }
-            var rect = EditorGUILayout.GetControlRect();
 
+            var rect = EditorGUILayout.GetControlRect();
+            assetsTreeView.syncSelection = isSelectionSyncEnabled;
             assetsTreeView.OnGUI(new Rect(rect.x, rect.y, position.width, position.height - rect.y));
         }
 
+        private void OnSelectionChanged()
+        {
+            if (assetHidingManagerSettings.IsSelectionSyncEnabled())
+            {
+                if (Selection.activeObject != null)
+                {
+                    var path = AssetDatabase.GetAssetPath(Selection.activeObject);
+                    assetsTreeView.SelectAsset(path);
+                }
+                else
+                {
+                    assetsTreeView.SetSelection(null);
+                }
+                Repaint();
+            }
+        }
 
         private static void LoadAssetHidingManagerSettings()
         {
@@ -97,6 +123,8 @@ namespace UnityAssetUtilities
 
         private class AssetsTreeView : TreeView
         {
+            public bool syncSelection = false;
+
             [SerializeField]
             private static Dictionary<int, string> paths = new Dictionary<int, string>();
             [SerializeField]
@@ -110,6 +138,28 @@ namespace UnityAssetUtilities
                 : base(treeViewState)
             {
                 Reload();
+            }
+
+            public void SelectAsset(string unityAssetPath)
+            {
+                string assetPath = unityAssetPath.StartsWith("Assets") ? $"{Application.dataPath}{unityAssetPath.Substring(6)}" : unityAssetPath;
+                assetPath = assetPath.Replace("/", "\\");
+                foreach (var item in allItems)
+                {
+                    if (paths.TryGetValue(item.id, out string path))
+                    {
+                        if (path.Equals(assetPath))
+                        {
+                            this.SetSelection(new List<int>() { item.id });
+                            var parent = item.parent;
+                            while (parent != null)
+                            {
+                                this.SetExpanded(parent.id, true);
+                                parent = parent.parent;
+                            }
+                        }
+                    }
+                }
             }
 
             protected override TreeViewItem BuildRoot()
@@ -240,7 +290,6 @@ namespace UnityAssetUtilities
                 }
                 return false;
             }
-
             protected override void SetupDragAndDrop(SetupDragAndDropArgs args)
             {
                 base.SetupDragAndDrop(args);
@@ -252,7 +301,6 @@ namespace UnityAssetUtilities
                 string title = draggedRows.Count == 1 ? draggedRows[0].displayName : "< Multiple >";
                 DragAndDrop.StartDrag(title);
             }
-
             protected override DragAndDropVisualMode HandleDragAndDrop(DragAndDropArgs args)
             {
                 if (args.parentItem != null && paths.ContainsKey(args.parentItem.id))
@@ -279,6 +327,17 @@ namespace UnityAssetUtilities
                 return DragAndDropVisualMode.Move;
             }
 
+            protected override void SingleClickedItem(int id)
+            {
+                base.SingleClickedItem(id);
+                if (syncSelection && paths.ContainsKey(id))
+                {
+                    string unityAssetPath = paths[id].Replace("\\", "/").Replace(Application.dataPath, "Assets");
+                    var asset = AssetDatabase.LoadAssetAtPath(unityAssetPath, typeof(UnityEngine.Object));
+                    EditorGUIUtility.PingObject(asset);
+                    Selection.activeObject = asset;
+                }
+            }
             protected override void DoubleClickedItem(int id)
             {
                 base.DoubleClickedItem(id);
@@ -347,7 +406,6 @@ namespace UnityAssetUtilities
                     System.Diagnostics.Process.Start("explorer.exe", Directory.Exists(path) ? path : Path.GetDirectoryName(path));
                 }
             }
-
             private void Delete(object parameter)
             {
                 if (parameter is string path)
@@ -367,7 +425,6 @@ namespace UnityAssetUtilities
                     }
                 }
             }
-
             private void Unhide(object parameter)
             {
                 if (parameter is string path)
@@ -427,25 +484,6 @@ namespace UnityAssetUtilities
                 }
             }
 
-            private Texture GetIconForFile(string path)
-            {
-                string unityAssetPath = path.Replace("\\", "/").Replace(Application.dataPath, "Assets");
-                var icon = AssetDatabase.GetCachedIcon(unityAssetPath);
-                if (icon != null)
-                {
-                    assetHidingManagerSettings.CacheAssetIcon(System.IO.Path.GetExtension(path), icon);
-                    return icon;
-                }
-                else if (assetHidingManagerSettings.TryGetIconForAsset(System.IO.Path.GetExtension(path), out var cachedIcon))
-                {
-                    return cachedIcon;
-                }
-                else
-                {
-                    return EditorGUIUtility.IconContent("DefaultAsset Icon").image;
-                }
-            }
-
             private string GetHiddenAssetPath(string assetPath, bool hidden)
             {
                 string fileName = Path.GetFileName(assetPath);
@@ -466,6 +504,25 @@ namespace UnityAssetUtilities
                     }
                 }
                 return assetPath;
+            }
+
+            private Texture GetIconForFile(string path)
+            {
+                string unityAssetPath = path.Replace("\\", "/").Replace(Application.dataPath, "Assets");
+                var icon = AssetDatabase.GetCachedIcon(unityAssetPath);
+                if (icon != null)
+                {
+                    assetHidingManagerSettings.CacheAssetIcon(System.IO.Path.GetExtension(path), icon);
+                    return icon;
+                }
+                else if (assetHidingManagerSettings.TryGetIconForAsset(System.IO.Path.GetExtension(path), out var cachedIcon))
+                {
+                    return cachedIcon;
+                }
+                else
+                {
+                    return EditorGUIUtility.IconContent("DefaultAsset Icon").image;
+                }
             }
         }
     }
