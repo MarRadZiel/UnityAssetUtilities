@@ -1,7 +1,6 @@
 # Unity Asset Utilities
 Set of tools designed to help managing assets in Unity projects.</br>
-It's a personal project of mine that is still in development.</br>
-New tools and updates can appear over time. :)
+New tools and updates may appear over time.
 
 ## External Assets
 Solution for managing assets outside of "Assets" folder.
