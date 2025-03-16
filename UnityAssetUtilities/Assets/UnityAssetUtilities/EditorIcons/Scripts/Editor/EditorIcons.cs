@@ -299,9 +299,9 @@ namespace UnityAssetUtilities
             EditorGUILayout.GetControlRect(GUILayout.Height(1f), GUILayout.Width(50f));
             GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
             headerStyle.fontStyle = FontStyle.Bold;
-            EditorGUILayout.SelectableLabel("Name", headerStyle, GUILayout.MaxWidth(200f));
-            EditorGUILayout.SelectableLabel("FileID", headerStyle, GUILayout.MaxWidth(200f));
-            EditorGUILayout.SelectableLabel("Size", headerStyle, GUILayout.Width(50f));
+            EditorGUILayout.LabelField("Name", headerStyle, GUILayout.MaxWidth(200f));
+            EditorGUILayout.LabelField("FileID", headerStyle, GUILayout.MaxWidth(200f));
+            EditorGUILayout.LabelField("Size", headerStyle, GUILayout.Width(50f));
             EditorGUILayout.LabelField(GUIContent.none, GUILayout.Width(50f));
             EditorGUILayout.EndHorizontal();
             scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
@@ -344,7 +344,7 @@ namespace UnityAssetUtilities
                 GUI.DrawTexture(rect, entry.icon, ScaleMode.ScaleToFit);
                 EditorGUILayout.SelectableLabel(entry.icon.name, GUILayout.MaxWidth(200f));
                 EditorGUILayout.SelectableLabel(entry.fileId, GUILayout.MaxWidth(200f));
-                EditorGUILayout.LabelField(new GUIContent("{entry.icon.width}x{entry.icon.height}"), GUILayout.Width(50f));
+                EditorGUILayout.LabelField(new GUIContent($"{entry.icon.width}x{entry.icon.height}"), GUILayout.Width(50f));
                 EditorGUI.BeginDisabledGroup(editorIcons.WasExtracted(entry.icon));
                 if (GUILayout.Button(new GUIContent("Extract", "Saves copy of icon asset as EditorIcons sub asset."), GUILayout.Width(50f)))
                 {
