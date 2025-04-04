@@ -4,7 +4,8 @@ New tools and updates may appear over time.
 
 ## External Assets
 Solution for managing assets outside of "Assets" folder.
-Allows defining a binding between file outside of "Assets" folder and Unity asset. It will be automatically updated to reflect the state of the external file.</br>
+Allows defining a binding between file outside of "Assets" folder and Unity asset.<br/>
+Files can be automatically updated to reflect the state of eachother. Assets can be updated based on source files, source files based on assets or both.</br>
 This can come in handy if you plan to use same file for multiple projects. You could create an external asset binding so every time this file is modified, asset in the project is automatically updated.</br>
 External asset can be used for example to synchronize your dll library shared by your Unity projects, so that always it's newest version could be used.</br>
 Generally this solution could help if you plan to use asset stored outside of "Assets" folder for any reason.

@@ -1,3 +1,4 @@
+using UnityEditor;
 using UnityEngine;
 
 namespace UnityAssetUtilities
@@ -6,6 +7,11 @@ namespace UnityAssetUtilities
     [System.Serializable]
     public class ExternalAsset
     {
+        [SerializeField]
+        private ExternalAssetMode _mode;
+        /// <summary>Mode of this external asset.</summary>
+        public ExternalAssetMode Mode { get => _mode; set => _mode = value; }
+
         [SerializeField]
         private bool _autoUpdate;
         /// <summary>Should this asset be automatically updated.</summary>
@@ -27,6 +33,10 @@ namespace UnityAssetUtilities
         private string _assetAbsolutePath;
         /// <summary>Assets-relative path of an asset.</summary>
         public string AssetPath => _assetPath;
+
+        private bool _requestUpdate;
+        /// <summary>Should this asset be manually updated.</summary>
+        public bool RequestUpdate { get => _requestUpdate; set => _requestUpdate = value; }
 
         /// <summary>Source file FileInfo instance.</summary>
         public System.IO.FileInfo SourceFileInfo { get; private set; }
@@ -54,13 +64,16 @@ namespace UnityAssetUtilities
             _assetAbsolutePath = AssetsUtility.AssetsPathToAbsolutePath(_assetPath);
         }
 
-        /// <summary>Checks if destination asset is up-to-date with source file.</summary>
+        /// <summary>Returns this ExternalAssets state.</summary>
         /// <param name="refresh">Should file information be refreshed before checking modification state.</param>
-        /// <returns>True if asset is up-to-date.</returns>
-        public bool IsAssetUpToDate(bool refresh = true)
+        /// <returns>State of this ExternalAsset.</returns>
+        public ExternalAssetState GetAssetState(bool refresh = true)
         {
             if (refresh) RefreshFileInfos();
-            return SourceFileInfo.LastWriteTime <= AssetFileInfo.LastWriteTime;
+            int comparison = SourceFileInfo.LastWriteTime.CompareTo(AssetFileInfo.LastWriteTime);
+            if (comparison == 0) return ExternalAssetState.SameAsSource;
+            else if (comparison < 0) return ExternalAssetState.NewerThanSource;
+            else return ExternalAssetState.OlderThanSource;
         }
         
         /// <summary>Refreshes file information stored in source file and destination asset FileInfo instances.</summary>
@@ -73,5 +86,21 @@ namespace UnityAssetUtilities
             if (AssetFileInfo == null) AssetFileInfo = new System.IO.FileInfo(_assetAbsolutePath);
             else AssetFileInfo.Refresh();
         }
+    }
+
+    public enum ExternalAssetState
+    {
+        OlderThanSource,
+        SameAsSource,
+        NewerThanSource,
+    }
+    public enum ExternalAssetMode
+    {
+        /// <summary>Asset is updated based on source file.</summary>
+        SourceToAsset,
+        /// <summary>Source file is updated based on Asset.</summary>
+        AssetToSource,
+        /// <summary>Asset is updated based on source file and source file is updated based on Asset</summary>
+        TwoWay,
     }
 }

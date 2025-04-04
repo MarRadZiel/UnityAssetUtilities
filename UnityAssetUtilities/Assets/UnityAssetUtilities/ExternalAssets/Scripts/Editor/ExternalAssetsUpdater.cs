@@ -52,7 +52,6 @@ namespace UnityAssetUtilities
                 Debug.LogError($"{nameof(ExternalAssetsManagerSettings)} asset couldn't be loaded or created.");
             }
         }
-
         private static void CreateExternalAssetsManagerSettingsAsset()
         {
             _externalAssetsManagerSettings = ScriptableObject.CreateInstance<ExternalAssetsManagerSettings>();
@@ -73,16 +72,31 @@ namespace UnityAssetUtilities
         {
             foreach (var externalAsset in ExternalAssetsManagerSettings.ExternalAssets)
             {
-                if (externalAsset.AutoUpdate)
+                if (externalAsset.AutoUpdate || externalAsset.RequestUpdate)
                 {
+                    bool manualUpdate = externalAsset.RequestUpdate;
+                    externalAsset.RequestUpdate = false;
                     externalAsset.RefreshFileInfos();
-                    if (externalAsset.SourceFileInfo.Exists)
+
+                    if (externalAsset.Mode == ExternalAssetMode.SourceToAsset && !externalAsset.SourceFileInfo.Exists)
+                    {
+                        Debug.LogError($"Source file at {externalAsset.SourceFileInfo.FullName} doesn't exist. Source file is mandatory in {externalAsset.Mode} mode.");
+                    }
+                    else if (externalAsset.Mode == ExternalAssetMode.AssetToSource && !externalAsset.AssetFileInfo.Exists)
+                    {
+                        Debug.LogError($"Asset file at {externalAsset.AssetFileInfo.FullName} doesn't exist. Asset file is mandatory in {externalAsset.Mode} mode.");
+                    }
+                    else if (externalAsset.Mode == ExternalAssetMode.TwoWay && !externalAsset.SourceFileInfo.Exists && !externalAsset.AssetFileInfo.Exists)
+                    {
+                        Debug.LogError($"Both source file at {externalAsset.SourceFileInfo.FullName} and asset files at {externalAsset.AssetFileInfo.FullName} doesn't exist. Source or asset file is mandatory in {externalAsset.Mode} mode.");
+                    }
+                    else if (externalAsset.Mode == ExternalAssetMode.SourceToAsset || externalAsset.Mode == ExternalAssetMode.TwoWay)
                     {
                         if (externalAsset.AssetFileInfo.Exists)
                         {
-                            if (!externalAsset.IsAssetUpToDate(refresh: false))
+                            if (externalAsset.GetAssetState(refresh: false) == ExternalAssetState.OlderThanSource)
                             {
-                                if (!ExternalAssetsManagerSettings.notifyBeforeUpdate || !externalAsset.NotifyBeforeUpdate || EditorUtility.DisplayDialog("External asset modified", $"External asset version is newer than asset at path: {externalAsset.AssetPath}\nShould asset be updated? If you refuse, automatic update will be disabled.", "Yes", "No"))
+                                if (manualUpdate || !ExternalAssetsManagerSettings.notifyBeforeUpdate || !externalAsset.NotifyBeforeUpdate || EditorUtility.DisplayDialog("External asset modified", $"External asset version is newer than asset at path: {externalAsset.AssetPath}\nShould asset be updated? If you refuse, automatic update will be disabled.", "Yes", "No"))
                                 {
                                     try
                                     {
@@ -102,10 +116,35 @@ namespace UnityAssetUtilities
                                     AssetDatabase.SaveAssetIfDirty(ExternalAssetsManagerSettings);
                                 }
                             }
+                            if (externalAsset.Mode == ExternalAssetMode.TwoWay)
+                            {
+                                if (externalAsset.GetAssetState(refresh: false) == ExternalAssetState.NewerThanSource)
+                                {
+                                    if (manualUpdate || !ExternalAssetsManagerSettings.notifyBeforeUpdate || !externalAsset.NotifyBeforeUpdate || EditorUtility.DisplayDialog("Project asset modified", $"Project asset version is newer than asset at path: {externalAsset.SourceFileInfo}\nShould external asset be updated? If you refuse, automatic update will be disabled.", "Yes", "No"))
+                                    {
+                                        try
+                                        {
+                                            externalAsset.SourceFileInfo.Delete();
+                                            externalAsset.AssetFileInfo.CopyTo(externalAsset.SourceFileInfo.FullName);
+                                            AssetDatabase.Refresh();
+                                        }
+                                        catch (System.Exception e)
+                                        {
+                                            Debug.LogError($"Error during external asset update.\n{e}");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        externalAsset.AutoUpdate = false;
+                                        EditorUtility.SetDirty(ExternalAssetsManagerSettings);
+                                        AssetDatabase.SaveAssetIfDirty(ExternalAssetsManagerSettings);
+                                    }
+                                }
+                            }
                         }
                         else
                         {
-                            if (!ExternalAssetsManagerSettings.notifyBeforeUpdate || !externalAsset.NotifyBeforeUpdate || EditorUtility.DisplayDialog("External asset modified", $"There is no corresponding asset yet.\nShould it be created now? If you refuse, automatic update will be disabled.", "Yes", "No"))
+                            if (manualUpdate || !ExternalAssetsManagerSettings.notifyBeforeUpdate || !externalAsset.NotifyBeforeUpdate || EditorUtility.DisplayDialog("External asset modified", $"There is no corresponding asset yet.\nShould it be created now? If you refuse, automatic update will be disabled.", "Yes", "No"))
                             {
                                 try
                                 {
@@ -125,9 +164,54 @@ namespace UnityAssetUtilities
                             AssetDatabase.Refresh();
                         }
                     }
-                    else
+                    else if (externalAsset.Mode == ExternalAssetMode.AssetToSource)
                     {
-                        Debug.LogError($"Source file at {externalAsset.SourceFileInfo.FullName} doesn't exist.");
+                        if (externalAsset.SourceFileInfo.Exists)
+                        {
+                            if (externalAsset.GetAssetState(refresh: false) == ExternalAssetState.NewerThanSource)
+                            {
+                                if (manualUpdate || !ExternalAssetsManagerSettings.notifyBeforeUpdate || !externalAsset.NotifyBeforeUpdate || EditorUtility.DisplayDialog("Project asset modified", $"Project asset version is newer than asset at path: {externalAsset.SourceFileInfo}\nShould external asset be updated? If you refuse, automatic update will be disabled.", "Yes", "No"))
+                                {
+                                    try
+                                    {
+                                        externalAsset.SourceFileInfo.Delete();
+                                        externalAsset.AssetFileInfo.CopyTo(externalAsset.SourceFileInfo.FullName);
+                                        AssetDatabase.Refresh();
+                                    }
+                                    catch (System.Exception e)
+                                    {
+                                        Debug.LogError($"Error during external asset update.\n{e}");
+                                    }
+                                }
+                                else
+                                {
+                                    externalAsset.AutoUpdate = false;
+                                    EditorUtility.SetDirty(ExternalAssetsManagerSettings);
+                                    AssetDatabase.SaveAssetIfDirty(ExternalAssetsManagerSettings);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (manualUpdate || !ExternalAssetsManagerSettings.notifyBeforeUpdate || !externalAsset.NotifyBeforeUpdate || EditorUtility.DisplayDialog("Project asset modified", $"There is no corresponding external asset yet.\nShould it be created now? If you refuse, automatic update will be disabled.", "Yes", "No"))
+                            {
+                                try
+                                {
+                                    externalAsset.AssetFileInfo.CopyTo(externalAsset.SourceFileInfo.FullName);
+                                }
+                                catch (System.Exception e)
+                                {
+                                    Debug.LogError($"Error during external asset update.\n{e}");
+                                }
+                            }
+                            else
+                            {
+                                externalAsset.AutoUpdate = false;
+                                EditorUtility.SetDirty(ExternalAssetsManagerSettings);
+                                AssetDatabase.SaveAssetIfDirty(ExternalAssetsManagerSettings);
+                            }
+                            AssetDatabase.Refresh();
+                        }
                     }
                 }
             }
