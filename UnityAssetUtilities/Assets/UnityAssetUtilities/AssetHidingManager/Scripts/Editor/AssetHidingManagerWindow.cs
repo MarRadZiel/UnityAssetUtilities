@@ -26,6 +26,7 @@ namespace UnityAssetUtilities
         private static Texture AssetHidingManagerShownIcon => EditorGUIUtility.isProSkin ? assetHidingManagerSettings.iconSet["assetHidingManager_shown_icon"] : assetHidingManagerSettings.iconSet["assetHidingManager_shown_icon_dark"];
         private static Texture AssetHidingManagerHiddenIcon => EditorGUIUtility.isProSkin ? assetHidingManagerSettings.iconSet["assetHidingManager_hidden_icon"] : assetHidingManagerSettings.iconSet["assetHidingManager_hidden_icon_dark"];
 
+        private static readonly List<int> emptySelectionList = new List<int>();
 
         [MenuItem("Tools/Asset Hiding Manager")]
         private static void ShowWindow()
@@ -59,7 +60,7 @@ namespace UnityAssetUtilities
             EditorGUILayout.EndHorizontal();
             if (showHelp)
             {
-                EditorGUILayout.HelpBox("This is a simple tool to hide and unhide assets for import.\nAll it does is renaming assets and their meta files by adding or removing '.' character at the beginning of the filename.\nHidden assets are not visible in Project window, and won't be included in build. There are also ommited during import.\nTo hide/unhide asset press eye icon next to its name.", MessageType.Info);
+                EditorGUILayout.HelpBox($"This is a simple tool to hide and unhide assets for import.\nAll it does is renaming assets and their meta files by adding or removing '{AssetHidingManager.hiddenAssetPrefix}' prefix at the beginning of the filename.\nHidden assets are not visible in Project window, and won't be included in build. There are also ommited during import.\nTo hide/unhide asset press eye icon next to its name.", MessageType.Info);
             }
 
             var rect = EditorGUILayout.GetControlRect();
@@ -78,8 +79,12 @@ namespace UnityAssetUtilities
                 }
                 else
                 {
-                    assetsTreeView.SetSelection(null);
+                    if (!assetsTreeView.changedSelection)
+                    {
+                        assetsTreeView.SetSelection(emptySelectionList);
+                    }
                 }
+                assetsTreeView.changedSelection = false;
                 Repaint();
             }
         }
@@ -89,7 +94,7 @@ namespace UnityAssetUtilities
             string[] assetGUIDs = AssetDatabase.FindAssets($"t:{nameof(assetHidingManagerSettings)}");
             if (assetGUIDs != null && assetGUIDs.Length > 0)
             {
-                assetHidingManagerSettings = AssetDatabase.LoadAssetAtPath<AssetHidingManagerSettings>(AssetDatabase.GUIDToAssetPath(assetGUIDs[0]));
+                assetHidingManagerSettings = AssetsUtility.LoadAssetAtGUID<AssetHidingManagerSettings>(assetGUIDs[0]);
             }
             else
             {
@@ -123,6 +128,7 @@ namespace UnityAssetUtilities
 
         private class AssetsTreeView : TreeView
         {
+            public bool changedSelection = false;
             public bool syncSelection = false;
 
             [SerializeField]
@@ -131,8 +137,8 @@ namespace UnityAssetUtilities
             private static List<TreeViewItem> allItems = new List<TreeViewItem>();
 
             private TreeViewItem draggedItem;
-            private float iconWidth = 18;
-            private float toggleWidth = 18;
+            private const float iconWidth = 18;
+            private const float toggleWidth = 18;
 
             public AssetsTreeView(TreeViewState treeViewState)
                 : base(treeViewState)
@@ -142,8 +148,7 @@ namespace UnityAssetUtilities
 
             public void SelectAsset(string unityAssetPath)
             {
-                string assetPath = unityAssetPath.StartsWith("Assets") ? $"{Application.dataPath}{unityAssetPath.Substring(6)}" : unityAssetPath;
-                assetPath = assetPath.Replace("/", "\\");
+                string assetPath = AssetsUtility.UnifyDirectorySeparators(unityAssetPath.StartsWith(AssetsUtility.assetsFolderName) ? AssetsUtility.AssetsPathToAbsolutePath(unityAssetPath) : unityAssetPath);
                 foreach (var item in allItems)
                 {
                     if (paths.TryGetValue(item.id, out string path))
@@ -190,10 +195,10 @@ namespace UnityAssetUtilities
                         BuildTreeNode(dir, null, depth + 1, ref items, ref id);
                     }
                     var files = new List<FileInfo>(directory.GetFiles());
-                    files.Sort((a, b) => a.Name.TrimStart('.').CompareTo(b.Name.TrimStart('.')));
+                    files.Sort((a, b) => AssetHidingManager.GetHiddenAssetPath(a.Name, false).CompareTo(AssetHidingManager.GetHiddenAssetPath(b.Name, false)));
                     foreach (var fil in files)
                     {
-                        if (fil.Extension != ".meta")
+                        if (fil.Extension != AssetsUtility.metaFileExtension)
                         {
                             BuildTreeNode(null, fil, depth + 1, ref items, ref id);
                         }
@@ -210,7 +215,7 @@ namespace UnityAssetUtilities
             }
             private void CellGUI(Rect cellRect, TreeViewItem item, ref RowGUIArgs args)
             {
-                bool isHidden = args.label.StartsWith(".");
+                bool isHidden = AssetHidingManager.IsAssetHidden(args.label);
                 bool isOpened = IsExpanded(item.id);
                 if (isHidden) GUI.color = new Color(0.75f, 0.35f, 0);
 
@@ -263,12 +268,22 @@ namespace UnityAssetUtilities
 
                     if (isHidden != hide)
                     {
-                        SetAssetHidden(path, hide);
+                        if (AssetHidingManager.SetAssetHidden(path, hide, refreshAssetDatabase: true))
+                        {
+                            Reload();
+                            if (!hide && syncSelection)
+                            {
+                                var asset = AssetDatabase.LoadAssetAtPath(AssetsUtility.AbsolutePathToAssetsPath(AssetHidingManager.GetHiddenAssetPath(path, false)), typeof(UnityEngine.Object));
+                                EditorGUIUtility.PingObject(asset);
+                                Selection.activeObject = asset;
+                                changedSelection = true;
+                            }
+                        }
                     }
                 }
 
                 // Default icon and label
-                EditorGUI.LabelField(cellRect, new GUIContent(isHidden ? args.label.Substring(1) : args.label));
+                EditorGUI.LabelField(cellRect, new GUIContent(AssetHidingManager.GetHiddenAssetPath(args.label, false)));
                 //base.RowGUI(args);
                 GUI.color = Color.white;
             }
@@ -313,7 +328,7 @@ namespace UnityAssetUtilities
                             destinationPath = Path.GetDirectoryName(destinationPath);
                         }
                         string path = paths[draggedItem.id];
-                        string metaFilePath = $"{path}.meta";
+                        string metaFilePath = AssetsUtility.GetMetaFilePath(path);
 
                         string filename = Path.GetFileName(path);
                         string metaFilename = Path.GetFileName(metaFilePath);
@@ -332,10 +347,11 @@ namespace UnityAssetUtilities
                 base.SingleClickedItem(id);
                 if (syncSelection && paths.ContainsKey(id))
                 {
-                    string unityAssetPath = paths[id].Replace("\\", "/").Replace(Application.dataPath, "Assets");
+                    string unityAssetPath = AssetsUtility.AbsolutePathToAssetsPath(paths[id]);
                     var asset = AssetDatabase.LoadAssetAtPath(unityAssetPath, typeof(UnityEngine.Object));
                     EditorGUIUtility.PingObject(asset);
                     Selection.activeObject = asset;
+                    changedSelection = true;
                 }
             }
             protected override void DoubleClickedItem(int id)
@@ -361,7 +377,7 @@ namespace UnityAssetUtilities
                 {
                     Vector2 mousePos = Event.current.mousePosition;
                     Selection.SetActiveObjectWithContext(null, null);
-                    EditorUtility.DisplayPopupMenu(new Rect(mousePos.x, mousePos.y, 0, 0), "Assets/", null);
+                    EditorUtility.DisplayPopupMenu(new Rect(mousePos.x, mousePos.y, 0, 0), $"Assets/", null);
                 }
             }
 
@@ -371,14 +387,14 @@ namespace UnityAssetUtilities
                 if (paths.ContainsKey(id))
                 {
                     Vector2 mousePos = Event.current.mousePosition;
-                    string absolutePath = paths[id].Replace('\\', '/').Trim();
+                    string absolutePath = paths[id].Trim();
                     string path = AssetsUtility.AbsolutePathToAssetsPath(absolutePath);
 
                     var asset = AssetDatabase.LoadAssetAtPath<Object>(path);
                     if (asset != null)
                     {
                         Selection.SetActiveObjectWithContext(asset, null);
-                        EditorUtility.DisplayPopupMenu(new Rect(mousePos.x, mousePos.y, 0, 0), "Assets/", null);
+                        EditorUtility.DisplayPopupMenu(new Rect(mousePos.x, mousePos.y, 0, 0), $"Assets/", null);
                     }
                     else
                     {
@@ -412,7 +428,7 @@ namespace UnityAssetUtilities
                 {
                     if (EditorUtility.DisplayDialog("Delete asset", "Are you sure to delete hidden asset?", "Yes", "No"))
                     {
-                        string metaFilePath = $"{path}.meta";
+                        string metaFilePath = AssetsUtility.GetMetaFilePath(path);
                         try
                         {
                             File.Delete(path);
@@ -429,86 +445,27 @@ namespace UnityAssetUtilities
             {
                 if (parameter is string path)
                 {
-                    bool isHidden = Path.GetFileName(path).StartsWith(".");
-
+                    bool isHidden = AssetHidingManager.IsAssetAtPathHidden(path);
                     if (isHidden)
                     {
-                        SetAssetHidden(path, false);
-                    }
-                }
-            }
-
-            private void SetAssetHidden(string path, bool hide)
-            {
-                if (!string.IsNullOrEmpty(path))
-                {
-                    string filename = Path.GetFileName(path);
-                    bool isFile = Path.HasExtension(path) && !string.IsNullOrEmpty(filename.Replace(Path.GetExtension(filename), string.Empty));
-                    string metaFilePath = $"{path}.meta";
-                    string targetPath = GetHiddenAssetPath(path, hide);
-                    string targetMetaFilePath = GetHiddenAssetPath(metaFilePath, hide);
-
-                    bool success = true;
-
-                    if (isFile)
-                    {
-                        if (File.Exists(path) && !File.Exists(targetPath))
+                        if (AssetHidingManager.SetAssetHidden(path, false, refreshAssetDatabase: true))
                         {
-                            File.Move(path, targetPath);
+                            Reload();
+                            if (syncSelection)
+                            {
+                                var asset = AssetDatabase.LoadAssetAtPath(AssetsUtility.AbsolutePathToAssetsPath(AssetHidingManager.GetHiddenAssetPath(path, false)), typeof(UnityEngine.Object));
+                                EditorGUIUtility.PingObject(asset);
+                                Selection.activeObject = asset;
+                                changedSelection = true;
+                            }
                         }
-                        else success = false;
-                    }
-                    else
-                    {
-                        if (Directory.Exists(path) && !Directory.Exists(targetPath))
-                        {
-                            Directory.Move(path, targetPath);
-                        }
-                        else success = false;
-
-                    }
-                    if (File.Exists(metaFilePath) && !File.Exists(targetMetaFilePath))
-                    {
-                        File.Move(metaFilePath, targetMetaFilePath);
-                    }
-                    else success = false;
-
-                    if (!success)
-                    {
-                        Debug.LogError($"Could not {(hide ? "hide" : "unhide")} asset because of naming problem.\nThis could be caused by already existing file with same name as target {(hide ? "hidden" : "unhidden")} asset. This also applies to assets .meta files.");
-                    }
-                    else
-                    {
-                        Reload();
                     }
                 }
-            }
-
-            private string GetHiddenAssetPath(string assetPath, bool hidden)
-            {
-                string fileName = Path.GetFileName(assetPath);
-                bool isHidden = fileName.StartsWith(".");
-
-                if (hidden)
-                {
-                    if (!isHidden)
-                    {
-                        return Path.Combine(Path.GetDirectoryName(assetPath), $".{fileName}");
-                    }
-                }
-                else
-                {
-                    if (isHidden)
-                    {
-                        return Path.Combine(Path.GetDirectoryName(assetPath), fileName.Substring(1));
-                    }
-                }
-                return assetPath;
             }
 
             private Texture GetIconForFile(string path)
             {
-                string unityAssetPath = path.Replace("\\", "/").Replace(Application.dataPath, "Assets");
+                string unityAssetPath = AssetsUtility.AbsolutePathToAssetsPath(path);
                 var icon = AssetDatabase.GetCachedIcon(unityAssetPath);
                 if (icon != null)
                 {
@@ -521,7 +478,8 @@ namespace UnityAssetUtilities
                 }
                 else
                 {
-                    return EditorGUIUtility.IconContent("DefaultAsset Icon").image;
+                    const string defaultAssetIcon = "DefaultAsset Icon";
+                    return EditorGUIUtility.IconContent(defaultAssetIcon).image;
                 }
             }
         }
